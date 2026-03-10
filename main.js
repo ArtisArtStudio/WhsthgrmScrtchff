@@ -567,7 +567,6 @@ function initPage() {
     soundHandle = document.getElementById("soundHandle");
     soundHandle.autoplay = false;
     soundHandle.muted = false;
-    soundHandle.src = 'audio/celebrate.mp3';
     // Audio will be played after scratchesended event
     setupScratcher();
   });
@@ -646,20 +645,22 @@ function setupScratcher() {
 
   // Handle scratch event
   scratchers[0].addEventListener('scratchesended', function() {
-    const p = 25;
+    const p = 40;
     pct = (this.fullAmount(40) * 100) | 0;
 
     if (!triggered && pct > p) {
       triggered = true;
 
-      // Play sound only for winners
+      soundHandle.volume = 0.5;
       if (isWinner && !nosound && soundHandle) {
+        soundHandle.src = 'audio/celebrate.mp3';
+      } else {
+        soundHandle.src = 'audio/lost.mp3';
+      }
         soundHandle.currentTime = 0;
         soundHandle.play().catch(err => {
           console.log('Could not play audio:', err);
         });
-      }
-
       // Show win message
       const instEl = document.getElementById("inst-text");
       if (instEl) {
@@ -796,10 +797,6 @@ function onResetClicked(scratchers) {
  */
 function confetti_effect() {
   if (triggered !== true) return;
-  if (!nosound) {
-    soundHandle.volume = 0.5;
-    soundHandle.play();
-  }
 
   const duration = 10 * 1000;
   const end = Date.now() + duration;
