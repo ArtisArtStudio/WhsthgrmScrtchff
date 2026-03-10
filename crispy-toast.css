@@ -1,0 +1,136 @@
+/* CRISPY-TOAST.CSS */
+/* ------------------------------------------------------------- */
+
+/* DEFINING-COLORS */
+:root {
+  --light-blue: #e1f5fe;
+  --dark-blue: #01579b;
+  --light-green: #c8e6c9;
+  --dark-green: #2e7d32;
+  --light-orange: #fff0b2;
+  --dark-orange: #e65100;
+  --light-cyan: #e0f7fa;
+  --dark-cyan: #00838f;
+  --light-red: #ffcdd2;
+  --dark-red: #b71c1c;
+}
+
+/* ADD ANIMATION KEYFRAMES FOR ZOOM EFFECT */
+@keyframes zoomInEffect {
+  from {
+    opacity: 0;
+    transform: scale(0);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.crispy-toast {
+  position: fixed;
+  padding: 10px 20px;
+  border-radius: 0px;
+  color: white;
+  font-weight:bold;
+  z-index: 9999;
+  opacity: 1; /* Start with 0 opacity */
+  animation: zoomInEffect 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size:medium;
+  min-width: 15rem;
+  min-height: 1.2rem;
+  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+}
+
+.toast-message {
+  white-space: pre-wrap;
+  overflow:clip;
+}
+
+.crispy-toast.message {
+  background-color: var(--light-blue);
+  color: var(--dark-blue);
+}
+
+.crispy-toast.success {
+  background-color: var(--light-green);
+  color: var(--dark-green);
+}
+
+.crispy-toast.info {
+  background-color: var(--light-cyan);
+  color: var(--dark-cyan);
+}
+
+.crispy-toast.warning {
+  background-color: var(--light-orange);
+  white-space:pre-line;
+  color: var(--dark-orange);
+  font-weight: 100;
+}
+.crispy-toast.error {
+  background-color: var(--light-red);
+  color: var(--dark-red);
+}
+
+
+/* PROGESS BAR COLORS AS PER MESSAGE TYPE */
+.crispy-toast.message::before {
+  background-color: var(--dark-blue) !important;
+}
+.crispy-toast.success::before {
+  background-color: var(--dark-green) !important;
+}
+.crispy-toast.info::before {
+  background-color: var(--dark-cyan) !important;
+}
+.crispy-toast.warning::before {
+  background-color: var(--dark-orange) !important;
+}
+.crispy-toast.error::before {
+  background-color: var(--dark-red) !important;
+}
+
+/* POSITIONINGS */
+
+.crispy-toast.top-right {
+  top: 20px;
+  right: 20px;
+}
+
+.crispy-toast.top-left {
+  top: 20px;
+  left: 20px;
+}
+
+.crispy-toast.bottom-right {
+  bottom: 20px;
+  right: 20px;
+}
+.crispy-toast.bottom-center {
+  bottom: 20px;
+  display: block;
+  margin: auto;
+  width: 30%;
+  position: inherit;
+  text-align: center;
+}
+.crispy-toast.top-center {
+  top: 2rem;
+  display: block;
+  margin: auto;
+  width: 50%;
+  position: absolute;
+  margin-left: auto;
+  margin-right: auto;
+  left: 0;
+  right: 0;
+  text-align: center;
+}
+.crispy-toast.bottom-left {
+  bottom: 20px;
+  left: 20px;
+}
+
+/* Add more position styles as needed */

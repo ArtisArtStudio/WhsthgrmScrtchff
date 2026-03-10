@@ -1,0 +1,484 @@
+/* ─── COLOR THEME VARIABLES ─────────────────────────────────────────────────── */
+/* Change --panel-color to #ff95c8 for pink or #5194f8 for blue */
+:root {
+  --panel-color: #5194f8; /* Blue theme (change to #ff95c8 for pink) */
+}
+
+html {
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+}
+*, *:before, *:after {
+  padding: 0;
+  margin: 0;
+  -webkit-box-sizing: inherit;
+  -moz-box-sizing: inherit;
+  box-sizing: inherit;
+  white-space:nowrap;
+}
+body {
+  height: 100svh;
+  background-image: url(images/background.png);
+  background-color: #ffffff;
+  background-repeat: no-repeat;
+  background-position: center top;
+  /* background-attachment: fixed; */
+  background-size: auto 100svh; /* always fit to height */
+  -o-background-size: auto 100svh;
+  -moz-background-size: auto 100svh;
+  overflow: hidden;
+  position: relative;
+
+  -webkit-text-size-adjust: none;
+   -moz-text-size-adjust: none;
+    -ms-text-size-adjust: none;
+        text-size-adjust: none;
+/* Prevent pull-down-to-refresh gesture */
+overscroll-behavior-y: contain; 
+}
+
+/* @media only screen and (prefers-color-scheme: dark), (max-width: 760px), (min-device-width: 768px) and (max-device-width: 1024px) {
+.tablemobile {
+    overflow-x: hidden;
+    display: block;
+}
+} */
+
+.pagetop h1 {
+font-family: "Yesteryear", cursive;
+display:flexbox;
+font-weight: 400;
+flex-direction: column;
+font-size: calc(5rem + 1vw);
+text-align: center;
+text-shadow: -1px -1px 0 #ffffff, 1px -1px 0 #616161, -1px 1px 0 #505050, 1px 1px 0 #584100,  2px  6px 6px #4d4c4c, 4px  12px 6px #fffdfd;
+
+} 
+
+.pagetop h3 {
+font-family: "Bona Nova SC", serif;
+flex-direction: column;
+font-size:calc(1.5rem + 0.6vw);
+color: #000000 !important;
+text-align: center;
+font-weight: 400;
+white-space:normal;
+
+} 
+.pagetop h4 {
+  font-family: "Roboto", sans-serif;
+  display:flex;
+  font-weight: 400;
+  color: #000000;
+  flex-direction: column;
+  font-size: 1.5vh;
+  text-align: center;
+  white-space:normal;
+  } 
+  .tabletop h4 {
+    font-family: "Roboto", sans-serif;
+    font-weight: 400;
+    color: #000000;
+    flex-direction: column;
+    font-size:4vmin;
+    text-align: center;
+    }
+ 
+#reveal {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+}
+#baby
+{
+  white-space: normal;
+}
+#boy{
+  text-align: center;
+}
+#t1 {
+  width: 80%;
+}
+.images{
+  max-width: 300px !important;
+}
+#scratcher-box {
+  width:22em;
+  align-content: center;
+  height:22em;
+  /*background-color: #FFFFFF;*/
+  position:absolute;
+  -webkit-transform: translate(-50%, -50%);
+  -ms-transform: translate(-50%, -50%);
+  -moz-transform: translate(-50%, -50%);
+  -o-transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%);
+  top: 70%;
+  left: 50%;
+}
+/* Styles for mobile phones */ 
+
+
+@media (min-width: 376px), (max-width:1024px){ 
+  .pagetop h4 {
+    font-size: calc(0.7rem + 1vw) ;
+  }
+  .pagetop h1 {
+    font-size: calc(5rem + 3vw);
+  }
+  .images{
+    max-width: 350px !important;
+  } 
+}
+
+/* @media (max-width: 430px), (max-height:670px) {
+  .pagetop h4 {
+    font-size: calc(0.7rem + 1vw) ;
+  }
+  .pagetop h1 {
+    font-size: calc(4rem + 2vw);
+  }
+
+  .pagetop h3 {
+    font-size: calc(1.5rem + 0.5vw);
+  }
+
+}  */
+
+@media (min-width: 768px) and (min-height: 930px){ 
+  
+  .pagetop h3 {
+    font-size: calc(1.5rem + 1.2vw);
+  }
+  .pagetop h1 {
+    font-size: calc(5rem + 4vw);
+  }
+
+ 
+  #scratcher-box {
+    position:absolute;
+    width: 30em;
+    height: 30em; 
+    top: 60%;
+  } 
+  .pagetop h4 {
+    font-size: 2vh;
+  }  
+  
+}
+@media (min-height: 635px) and (min-width: 1024px){ 
+  .pagetop h3 {
+    font-size: calc(1.5rem + 1.2vh);
+  } 
+  .pagetop h1 {
+    font-size: calc(5rem + 3vw);
+  }
+
+
+  .pagetop h4 {
+    font-size: 2vh;
+  }
+  #scratcher-box {
+    position:absolute;
+    width: 26em;
+    height: 26em; 
+    top: 73%;
+  }
+}
+@media (max-width: 375px), (max-height:667px) {
+  .pagetop h4 {
+    font-size: calc(0.7rem + 0.8vw) ;
+  }
+  .pagetop h1 {
+    font-size: calc(5rem + 1.8vw);
+  }
+    .pagetop h3 {
+    font-size: calc(1.3rem + 0.5vw);
+  }
+  /* #mainbody {
+    position: inherit;
+      -webkit-transform-origin: top left;
+      -ms-transform-origin: top left;
+      -moz-transform-origin: top left;
+      -o-transform-origin: top left;
+      transform-origin: top left;
+  } */
+
+  #scratcher-box {
+    position:absolute;
+    width: 21em;
+    height: 21em; 
+    top: 70%;
+  }
+  
+} 
+
+@media (max-width: 320px) { 
+   .pagetop h1 {
+    font-size: calc(3.5rem + 2vw);
+  }
+  .pagetop h3 {
+    font-size: calc(1.2rem + 0.5vw);
+  }
+  .pagetop h4 {
+    font-size: calc(0.6rem + 0.6vw) ;
+  }
+
+  .images{
+    max-width: 70% !important;
+  } 
+  #scratcher-box {
+    position:absolute;
+    width: 15em;
+    height: 15em; 
+    top: 68%;
+  }
+ 
+/*   #t1 {
+    width: 300px;
+  } */
+}
+#scratcher-box canvas {
+  cursor: grab;
+  }
+table { 
+  table-layout:fixed;
+  /**transform: translate(0%, 50%);
+  top: 75%;
+  left: 10%;*/
+}
+#scratcher1, #scratcher2, #scratcher3, #scratcher4, #scratcher5, #scratcher6, #scratcher7, #scratcher8, #scratcher9 {
+  width: 100%;
+  padding: 0px;
+  /* border: 1px;
+    border-color: #000000;
+    border-style: solid; */
+}
+
+#scratcher-bottom-margin {
+  display:block;
+  position: fixed;
+  text-align: right;
+  bottom: 1px;
+  right: 1px;
+  } 
+
+#resetbutton {
+border: none;
+padding: 10px 20px;
+color: #FFFFFF;
+cursor: pointer;
+transition: all 200ms ease-in-out;
+transition-duration: 200ms;
+transition-timing-function: ease-in-out;
+transition-delay: 0s;
+border-radius:1cap;
+text-align: center;
+text-decoration: none;
+display:block;
+font-size: 2vh;
+margin: auto;
+}
+#resetbutton:hover {
+  color: #000000;
+  background-color: snow!important;
+}
+#baby{
+  font-weight: 600;
+}
+/* modal window styles */
+button {
+  background-color: #04AA6D;
+  color: white;
+  padding: 14px 20px;
+  margin: 8px 0;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  opacity: 0.9;
+}
+
+button:hover {
+  opacity:1;
+}
+
+/* Float cancel and delete buttons and add an equal width */
+.nosoundbtn, .withsoundbtn {
+  float: left;
+  width: 50%;
+}
+
+/* Add a color to the cancel button */
+.nosoundbtn {
+  background-color: #ccc;
+  color: black;
+}
+
+/* Add a color to the delete button */
+.withsoundbtn {
+  background-color: #45a14d;
+}
+
+/* Add padding and center-align text to the container */
+.container {
+  padding: 16px;
+  text-align: center;
+}
+
+/* The Modal (background) */
+.modal {
+  display: none; /* Hidden by default */
+  position: fixed; /* Stay in place */
+  z-index: 1; /* Sit on top */
+  left: 0;
+  top: 0;
+  width: 100%; /* Full width */
+  height: 100%; /* Full height */
+  overflow: auto; /* Enable scroll if needed */
+  background-color: #afafafee;
+  padding-top: 50px;
+}
+
+/* Modal Content/Box */
+.modal-content {
+  background-color: #fefefe;
+  margin: 5% auto 15% auto; /* 5% from the top, 15% from the bottom and centered */
+  border: 1px solid #888;
+  width: 60%; /* Could be more or less, depending on screen size */
+  word-break: break-word;
+}
+h2 {
+  color: #000000 !important;
+  font-weight: 100;
+  white-space: normal;
+}
+/* Style the horizontal ruler */
+hr {
+  border: 1px solid #f1f1f1;
+  margin-bottom: 25px;
+}
+ 
+/* The Modal Close Button (x) */
+.close {
+  position: absolute;
+  right: 35px;
+  top: 15px;
+  font-size: 40px;
+  font-weight: bold;
+  color: #f1f1f1;
+}
+
+.close:hover,
+.close:focus {
+  color: #f44336;
+  cursor: pointer;
+}
+
+/* Clear floats */
+.clearfix::after {
+  content: "";
+  clear: both;
+  display: table;
+}
+
+/* Change styles for cancel button and delete button on extra small screens */
+@media screen and (max-width: 360px) {
+  .nosoundbtn, .withsoundbtn {
+    font-size: 5vw; 
+    width: 100%;
+  }
+  h2{
+    font-size: 6vw;
+  }
+}
+
+/* Host Control Panel Styling */
+#host-control-panel button {
+  transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+}
+
+#host-control-panel button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+#host-control-panel button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+#host-control-panel button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+#host-start-btn:hover:not(:disabled) {
+  background-color: var(--panel-color);
+  filter: brightness(1.2);
+}
+
+#host-increase-btn:hover:not(:disabled) {
+  background-color: #45a049;
+}
+
+#host-decrease-btn:hover:not(:disabled) {
+  background-color: #c62828;
+}
+
+/* Kicked message modal */
+#kicked-message {
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* Win/Lose message styling */
+.win-message {
+  font-size: 24px;
+  font-weight: bold;
+  color: var(--panel-color);
+  text-shadow: 2px 2px 4px #000;
+}
+
+.lose-message {
+  font-size: 24px;
+  font-weight: bold;
+  color: #999;
+  text-shadow: 2px 2px 4px #000;
+}
+
+#kicked-return-btn:hover {
+  background-color: #4081d6;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+/* Responsive host panel for small screens */
+@media screen and (max-width: 480px) {
+  #host-control-panel {
+    width: calc(100% - 20px) !important;
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    max-width: 280px;
+  }
+}
+
+@media screen and (max-height: 600px) {
+  #host-control-panel {
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+  }
+}
