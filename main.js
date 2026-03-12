@@ -136,6 +136,12 @@ document.addEventListener("DOMContentLoaded", async function() {
     // Initialize maxPlayers from game data
     currentMaxPlayers = gameData.maxPlayers;
 
+    // Check if game is already finished - skip to end screen
+    if (gameData.gameStatus === "Finished") {
+      showGameFinished();
+      return;
+    }
+
     // Wait in lobby for host to start the game or for any other changes
     showLoading("Entering lobby...");
     await waitInLobby();
@@ -275,7 +281,7 @@ async function waitInLobby() {
         }
 
         // Check if game started
-        if (json.gameStarted) {
+        if (json.gameStatus === "Started") {
           gameStarted = true;
           allPlayersConnected = true;
           console.log("Game started!");
@@ -651,6 +657,11 @@ function setupScratcher() {
     if (!triggered && pct > p) {
       triggered = true;
 
+      // Send status update to backend IMMEDIATELY
+      updatePlayerStatus('scratched').catch(err => {
+        console.error('Failed to update status:', err);
+      });
+
       soundHandle.volume = 0.5;
       if (isWinner && !nosound && soundHandle) {
         soundHandle.src = 'audio/celebrate.mp3';
@@ -674,22 +685,26 @@ function setupScratcher() {
       // hide any preview images if present
     document.querySelectorAll(".images").forEach(el => el.style.display = 'none');
 
-/* 
-      document.getElementById("boy").style.display = 'none';
-      document.getElementById("or").style.display = 'none';
-      document.getElementById("girl").style.display = 'none';
-      document.getElementById("H3").style.display = 'none';
-      document.getElementById("H4").style.display = 'none'; */
-
       scratchers[0].clear();
 
       if (isWinner) {
         confetti_effect();
       }
 
+      // wait until confetti animation completes (~10s) before showing the scratch-again button
       setTimeout(function() {
         document.getElementById("resetbutton").style.display = 'block';
-      }, 2000);
+        if (isHost) {
+          const btn = document.getElementById("resetgamebtn");
+          if (btn) {
+            btn.style.display = 'inline-block';
+            // button stays enabled, actual check happens on click
+          }
+        } else {
+          // Non-host: start polling for reset detection
+          startResetDetectionPolling();
+        }
+      }, 10500);
     }
   });
 
@@ -697,14 +712,26 @@ function setupScratcher() {
   document.getElementById("resetbutton").addEventListener('click', function() {
     onResetClicked(scratchers);
   });
+  // Reset game button (host only)
+  const resetGameBtn = document.getElementById("resetgamebtn");
+  if (resetGameBtn) {
+    resetGameBtn.addEventListener('click', hostResetGame);
+  }
 
 function onResetClicked(scratchers) {
+    // tell backend we're replaying
+    updatePlayerStatus('replay').catch(() => {});
+
     pct = 0;
     triggered = false;
     soundHandle.pause();
     soundHandle.currentTime = 0;
     const resetBtn = document.getElementById("resetbutton");
     if (resetBtn) resetBtn.style.display = 'none';
+    // hide reset game while scratching again
+    const resetGameBtn2 = document.getElementById("resetgamebtn");
+   resetGameBtn2.style.display = "none";
+
     // Hide win message and show instruction
     const instEl = document.getElementById("inst-text");
     if (instEl) {
@@ -717,6 +744,127 @@ function onResetClicked(scratchers) {
       scratchers[i].reset();
     }
 }
+
+
+// --- new helper functions for status tracking and host reset ---
+
+/**
+ * Send a status update to the server for this client.
+ * @param {string} statusSuffix  e.g. 'scratched' or 'replay'
+ */
+async function updatePlayerStatus(statusSuffix) {
+  if (!clientId || !gameID) return;
+  const payload = new FormData();
+  payload.append('action', 'updatePlayerStatus');
+  payload.append('gameId', gameID);
+  payload.append('clientId', clientId);
+  payload.append('status', statusSuffix);
+
+  try {
+    const res = await fetch(GAS_ENDPOINT, { method: 'POST', body: payload });
+    const json = await res.json();
+    if (!json.success) {
+      console.warn('status update failed:', json.error);
+    }
+  } catch (e) {
+    console.warn('status update error', e);
+  }
+}
+
+
+/**
+ * Query pollGameStatus and return whether all connected players have scratched.
+ * Does **not** touch the UI; callers may use the boolean result as needed.
+ */
+async function checkAllScratched() {
+  if (!gameID) return false;
+  const payload = new FormData();
+  payload.append('action', 'pollGameStatus');
+  payload.append('gameId', gameID);
+  if (clientId) payload.append('clientId', clientId);
+
+  try {
+    const res = await fetch(GAS_ENDPOINT, { method: 'POST', body: payload });
+    const json = await res.json();
+    return json.success ? json.allScratched : false;
+  } catch (e) {
+    console.warn('Unable to check all-scratched status', e);
+    return false;
+  }
+}
+
+let resetDetectionIntervalId = null;
+
+/**
+ * For non-host players: starts polling to detect if the host has reset the game.
+ * If gameStatus ever comes back empty, the game was reset, so reload.
+ */
+function startResetDetectionPolling() {
+  if (isHost || resetDetectionIntervalId) return; // only for non-hosts
+
+  resetDetectionIntervalId = setInterval(async () => {
+    if (!gameID) {
+      clearInterval(resetDetectionIntervalId);
+      return;
+    }
+
+    const payload = new FormData();
+    payload.append('action', 'pollGameStatus');
+    payload.append('gameId', gameID);
+    if (clientId) payload.append('clientId', clientId);
+
+    try {
+      const res = await fetch(GAS_ENDPOINT, { method: 'POST', body: payload });
+      const json = await res.json();
+      if (json.success) {
+        // if status is empty at any point, assume reset
+        if (!json.gameStatus) {
+          console.log("Game reset detected by non-host player, reloading...");
+          clearInterval(resetDetectionIntervalId);
+          window.location.reload();
+        }
+      }
+    } catch (e) {
+      console.warn('Reset detection poll error:', e);
+    }
+  }, 2000);
+}
+
+/**
+ * Called when host clicks "Reset Game" button.
+ */
+async function hostResetGame() {
+  // double-check on server side that every connected player has scratched
+  const everyoneDone = await checkAllScratched();
+  if (!everyoneDone) {
+    CrispyToast.info('Cannot reset: not all players have finished scratching');
+    return;
+  }
+
+  const payload = new FormData();
+  payload.append('action', 'resetGame');
+  payload.append('gameId', gameID);
+  if (clientId) payload.append('clientId', clientId);
+
+  try {
+    const res = await fetch(GAS_ENDPOINT, { method: 'POST', body: payload });
+    const json = await res.json();
+    if (json.success) {
+      CrispyToast.success('Game has been reset');
+      // reload so everyone has to rejoin
+      window.location.reload();
+    } else {
+      if (json.error && json.error.indexOf('Cannot reset until all players') === 0) {
+        CrispyToast.info(json.error);
+      } else {
+        CrispyToast.error(json.error || 'Failed to reset game');
+      }
+    }
+  } catch (e) {
+    CrispyToast.error('Reset error: ' + e.message);
+  }
+}
+
 
   // Handle orientation changes
   window.addEventListener('orientationchange', function() {

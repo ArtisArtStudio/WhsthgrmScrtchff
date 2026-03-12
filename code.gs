@@ -65,6 +65,12 @@ function doPost(e) {
       return handleUpdateMaxPlayers(e);
     } else if (action === "pollGameStatus") {
       return handlePollGameStatus(e);
+    } else if (action === "updatePlayerStatus") {
+      return handleUpdatePlayerStatus(e);
+    } else if (action === "resetGame") {
+      return handleResetGame(e);
+    } else if (action === "updateGameFinished") {
+      return handleUpdateGameFinished(e);
     } else if (action === "checkHostStatus") {
       return handleCheckHostStatus(e);
     }
@@ -297,8 +303,8 @@ function handleGetGameData(e) {
       maxPlayers:  gameRow[2],
       winnerIndex: gameRow[3],
       createdAt:   gameRow[4],
-      hostClientId: gameRow[7] || "",  // Column 8: hostClientId
-      gameStarted: gameRow[8] === true,  // Column 9: gameStarted
+      hostClientId: gameRow[7] || "",  // Column 8 (index 7): hostClientId
+      gameStatus:  gameRow[8] || "",  // Column 9 (index 8): gameStatus
       groomUrl:    groomUrl,
       groomBase64: groomBase64,
       groomMimeType: groomMimeType,
@@ -308,7 +314,7 @@ function handleGetGameData(e) {
 
     // Count connected players and record identifier strings
     for (var p = 0; p < 20; p++) {
-      var playerColIndex = 9 + p; // Players start at column 10 (array index 9) - same as original
+      var playerColIndex = 9 + p; // Players start at column 10 (array index 9)
       var playerNumLoop = p + 1;
       var status = gameRow[playerColIndex] || "";
       gameData.playerStatus["player" + playerNumLoop] = status;
@@ -324,6 +330,147 @@ function handleGetGameData(e) {
 
   } catch (err) {
     Logger.log("ERROR in handleGetGameData: " + err.message);
+    return jsonResponse({ success: false, error: err.message });
+  }
+}
+
+
+/**
+ * handleUpdatePlayerStatus(e)
+ * Updates the player column value by appending a status suffix
+ * (e.g. pid_xxx_scratched or pid_xxx_replay). Used to track when
+ * a user finishes scratching or replays the game.
+ */
+function handleUpdatePlayerStatus(e) {
+  var gameId = e.parameter.gameId;
+  var clientId = e.parameter.clientId;
+  var status = e.parameter.status; // e.g. "scratched" or "replay"
+
+  if (!gameId || !clientId || !status) {
+    return jsonResponse({ success: false, error: "Missing parameters" });
+  }
+
+  try {
+    var ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+    var sheet = ss.getSheetByName(CONFIG.SHEET_TAB);
+    if (!sheet) {
+      return jsonResponse({ success: false, error: "Game not found" });
+    }
+
+    var data = sheet.getDataRange().getValues();
+    var gameRowIndex = -1;
+
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][0] === gameId) {
+        gameRowIndex = i;
+        break;
+      }
+    }
+
+    if (gameRowIndex === -1) {
+      return jsonResponse({ success: false, error: "Game not found" });
+    }
+
+    // locate player's cell
+    for (var p = 0; p < 20; p++) {
+      var colIndex = 9 + p;
+      var val = data[gameRowIndex][colIndex];
+      if (val && val.toString().indexOf(clientId) === 0) {
+        // update with suffix
+        var newVal = clientId + "_" + status;
+        sheet.getRange(gameRowIndex+1, colIndex+1).setValue(newVal);
+        return jsonResponse({ success: true });
+      }
+    }
+
+    // if we didn't find the clientId, still return success (no-op)
+    return jsonResponse({ success: true });
+  } catch (err) {
+    Logger.log("ERROR in handleUpdatePlayerStatus: " + err.message);
+    return jsonResponse({ success: false, error: err.message });
+  }
+}
+
+
+/**
+ * handleResetGame(e)
+ * Only the host may call this. Clears all player slots and resets
+ * gameStarted/hostClientId in the sheet so new clients can join.
+ */
+function handleResetGame(e) {
+  var gameId = e.parameter.gameId;
+  var clientId = e.parameter.clientId;
+
+  if (!gameId || !clientId) {
+    return jsonResponse({ success: false, error: "Missing parameters" });
+  }
+
+  try {
+    var ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+    var sheet = ss.getSheetByName(CONFIG.SHEET_TAB);
+    if (!sheet) {
+      return jsonResponse({ success: false, error: "Game not found" });
+    }
+
+    var data = sheet.getDataRange().getValues();
+    var gameRow = null;
+    var gameRowIndex = -1;
+
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][0] === gameId) {
+        gameRow = data[i];
+        gameRowIndex = i;
+        break;
+      }
+    }
+
+    if (!gameRow) {
+      return jsonResponse({ success: false, error: "Game not found" });
+    }
+
+    // only host allowed
+    var hostId = gameRow[7] || "";
+    if (hostId !== clientId) {
+      return jsonResponse({ success: false, error: "Unauthorized" });
+    }
+
+    // verify all connected players have scratched before allowing reset
+    var connectedPlayers = 0;
+    var scratchedCount = 0;
+    for (var p = 0; p < 20; p++) {
+      var val = gameRow[9 + p] || ""; // player columns start at index 9
+      if (val !== "") {
+        connectedPlayers++;
+        // treat only explicit status suffixes as scratched
+        if (/_((scratched)|(replay))$/.test(val)) {
+          scratchedCount++;
+        }
+      }
+    }
+    if (connectedPlayers > 0 && scratchedCount !== connectedPlayers) {
+      return jsonResponse({ success: false, error: "Cannot reset until all players have scratched" });
+    }
+
+    // clear player cells
+    var clearValues = [];
+    for (var p = 0; p < 20; p++) {
+      clearValues.push([""]);
+    }
+    sheet.getRange(gameRowIndex+1, 10, 1, 20).setValues([clearValues.map(function(v){return v[0];})]);
+
+    // clear hostClientId and gameStatus
+    sheet.getRange(gameRowIndex+1, 8).setValue("");
+    sheet.getRange(gameRowIndex+1, 9).setValue("");
+
+    // randomize winnerIndex within the allowed range (1 to maxPlayers)
+    var maxPlayers = parseInt(gameRow[2], 10);
+    var newWinnerIndex = Math.floor(Math.random() * maxPlayers) + 1;
+    sheet.getRange(gameRowIndex+1, 4).setValue(newWinnerIndex);
+    Logger.log("Game " + gameId + " reset: new winnerIndex = " + newWinnerIndex);
+
+    return jsonResponse({ success: true });
+  } catch (err) {
+    Logger.log("ERROR in handleResetGame: " + err.message);
     return jsonResponse({ success: false, error: err.message });
   }
 }
@@ -470,17 +617,17 @@ function handleStartGame(e) {
     }
 
     // Verify the requester is the host
-    var hostClientId = data[gameRowIndex - 1][7] || "";  // Column 8 = hostClientId
+    var hostClientId = data[gameRowIndex - 1][7] || "";  // Column H (index 7): hostClientId
     if (hostClientId !== clientId) {
       return jsonResponse({ success: false, error: "Only the host can start the game" });
     }
 
-    // Set gameStarted to true
-    sheet.getRange(gameRowIndex, 9).setValue(true);  // Column 9 = gameStarted
+    // Set gameStatus to "Started"
+    sheet.getRange(gameRowIndex, 9).setValue("Started");  // Column I (index 8): gameStatus
     SpreadsheetApp.flush(); // Ensure the change is written immediately
     
     // Verify the value was set
-    var setValue = sheet.getRange(gameRowIndex, 9).getValue();
+    var setValue = sheet.getRange(gameRowIndex, 10).getValue();
     Logger.log("Game " + gameId + " started by host " + clientId + ", set value: " + setValue);
 
     return jsonResponse({ success: true });
@@ -625,37 +772,99 @@ function handlePollGameStatus(e) {
       return jsonResponse({ success: false, error: "Game not found" });
     }
 
-    // Count connected players and check if this player is still active
+    // Count connected players and determine how many have a status suffix
     var connectedPlayers = 0;
+    var scratchedCount = 0;
     var playerIsActive = false;
     for (var p = 0; p < 20; p++) {
       var playerColIndex = 9 + p;  // Players start at column 10 (array index 9)
       var playerVal = gameRow[playerColIndex] || "";
       if (playerVal !== "") {
         connectedPlayers++;
-        if (playerVal === clientId) {
+        if (/_((scratched)|(replay))$/.test(playerVal)) {
+          scratchedCount++;
+        }
+        if (playerVal.indexOf(clientId) === 0) {
           playerIsActive = true;
         }
       }
     }
 
-    var hostClientId = gameRow[7] || "";  // Column 8 = hostClientId
-    var gameStarted = gameRow[8] === true;  // Column 9 = gameStarted
+    var hostClientId = gameRow[7] || "";  // Column H (index 7): hostClientId
+    var gameStatus = gameRow[8] || "";  // Column I (index 8): gameStatus
     var maxPlayers = parseInt(gameRow[2], 10);
     var winnerIndex = parseInt(gameRow[3], 10);
 
+    var allScratched = connectedPlayers > 0 && scratchedCount === connectedPlayers;
+
     return jsonResponse({
       success: true,
-      gameStarted: gameStarted,
+      gameStatus: gameStatus,
       maxPlayers: maxPlayers,
       winnerIndex: winnerIndex,
       hostClientId: hostClientId,
       connectedPlayers: connectedPlayers,
-      playerIsActive: playerIsActive  // False if this player was kicked from lobby
+      playerIsActive: playerIsActive,  // False if this player was kicked from lobby
+      allScratched: allScratched
     });
 
   } catch (err) {
     Logger.log("ERROR in handlePollGameStatus: " + err.message);
+    return jsonResponse({ success: false, error: err.message });
+  }
+}
+
+
+/**
+ * handleUpdateGameFinished(e)
+ * Called to mark a game as finished (after all players have scratched).
+ * Sets gameStatus to "Finished".
+ */
+function handleUpdateGameFinished(e) {
+  var gameId = e.parameter.gameId;
+  var clientId = e.parameter.clientId;
+  
+  if (!gameId || !clientId) {
+    return jsonResponse({ success: false, error: "Missing parameters" });
+  }
+
+  try {
+    var ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+    var sheet = ss.getSheetByName(CONFIG.SHEET_TAB);
+    
+    if (!sheet) {
+      return jsonResponse({ success: false, error: "Game not found" });
+    }
+
+    var data = sheet.getDataRange().getValues();
+    var gameRowIndex = -1;
+
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][0] === gameId) {
+        gameRowIndex = i;
+        break;
+      }
+    }
+
+    if (gameRowIndex === -1) {
+      return jsonResponse({ success: false, error: "Game not found" });
+    }
+
+    // Only host can update game finished status
+    var hostClientId = data[gameRowIndex][7] || "";  // Column H (index 7): hostClientId
+    if (hostClientId !== clientId) {
+      return jsonResponse({ success: false, error: "Only the host can finish the game" });
+    }
+
+    // Set gameStatus to "Finished"
+    sheet.getRange(gameRowIndex + 1, 9).setValue("Finished");  // Column I (index 8): gameStatus
+    SpreadsheetApp.flush();
+    
+    Logger.log("Game " + gameId + " marked as finished");
+    return jsonResponse({ success: true });
+
+  } catch (err) {
+    Logger.log("ERROR in handleUpdateGameFinished: " + err.message);
     return jsonResponse({ success: false, error: err.message });
   }
 }
@@ -869,12 +1078,19 @@ function logToSheet(record) {
       sheet.getRange(1, 9).setValue("groomFileId");
       sheet.getRange(1, 9).setFontWeight("bold");
     }
+    var hasGameStatus = currentHeaders.length >= 10 && currentHeaders[9] === "gameStatus";
+    if (!hasGameStatus) {
+      // Insert gameStatus column after gameStarted (column 9)
+      sheet.insertColumnAfter(9);
+      sheet.getRange(1, 10).setValue("gameStatus");
+      sheet.getRange(1, 10).setFontWeight("bold");
+    }
   }
 
   // Write column headers on very first use
   if (sheet.getLastRow() === 0) {
     var headers = ["gameId", "name", "maxPlayers", "winnerIndex", "createdAt",
-                   "gameFolderId", "metaFileId", "hostClientId", "gameStarted"];
+                   "gameFolderId", "metaFileId", "hostClientId", "gameStatus"];
     // Add player columns (player1 through player20)
     for (var p = 1; p <= 20; p++) {
       headers.push("player" + p);
@@ -892,8 +1108,8 @@ function logToSheet(record) {
     record.createdAt,
     record.gameFolderId,
     record.metaFileId,
-    "",  // hostClientId (empty initially) - Column 8
-    ""   // gameStarted (empty initially) - Column 9
+    "",  // hostClientId (empty initially) - Column 8 (index 7)
+    ""   // gameStatus (empty initially) - Column 9 (index 8)
   ];
   
   // Add 20 empty player columns

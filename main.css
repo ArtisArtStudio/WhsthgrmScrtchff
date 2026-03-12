@@ -285,6 +285,28 @@ margin: auto;
   color: #000000;
   background-color: snow!important;
 }
+#resetgamebtn {
+  border: none;
+  padding: 10px 20px;
+  color: #FFFFFF;
+  cursor: pointer;
+  transition: all 200ms ease-in-out;
+  border-radius: 1cap;
+  text-align: center;
+  text-decoration: none;
+  display: block;
+  font-size: 2vh;
+  margin: auto;
+}
+#resetgamebtn:hover:not(:disabled) {
+  color: #000000;
+  background-color: snow!important;
+}
+#resetgamebtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  color: #888888;
+}
 #baby{
   font-weight: 600;
 }
