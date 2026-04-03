@@ -338,13 +338,13 @@ function handleGetGameData(e) {
 /**
  * handleUpdatePlayerStatus(e)
  * Updates the player column value by appending a status suffix
- * (e.g. pid_xxx_scratched or pid_xxx_replay). Used to track when
- * a user finishes scratching or replays the game.
+ * (e.g. pid_xxx_scratched). Used to track when a user finishes scratching.
+ * Once scratched, status remains permanent until host reset.
  */
 function handleUpdatePlayerStatus(e) {
   var gameId = e.parameter.gameId;
   var clientId = e.parameter.clientId;
-  var status = e.parameter.status; // e.g. "scratched" or "replay"
+  var status = e.parameter.status; // e.g. "scratched"
 
   if (!gameId || !clientId || !status) {
     return jsonResponse({ success: false, error: "Missing parameters" });
@@ -377,7 +377,7 @@ function handleUpdatePlayerStatus(e) {
       var val = data[gameRowIndex][colIndex];
       if (val && val.toString().indexOf(clientId) === 0) {
         // update with suffix
-        var newVal = clientId + "_" + status;
+        var newVal = status ? clientId + "_" + status : clientId;
         sheet.getRange(gameRowIndex+1, colIndex+1).setValue(newVal);
         return jsonResponse({ success: true });
       }
@@ -442,7 +442,7 @@ function handleResetGame(e) {
       if (val !== "") {
         connectedPlayers++;
         // treat only explicit status suffixes as scratched
-        if (/_((scratched)|(replay))$/.test(val)) {
+        if (/_scratched$/.test(val)) {
           scratchedCount++;
         }
       }
@@ -458,8 +458,12 @@ function handleResetGame(e) {
     }
     sheet.getRange(gameRowIndex+1, 10, 1, 20).setValues([clearValues.map(function(v){return v[0];})]);
 
-    // clear hostClientId and gameStatus
-    sheet.getRange(gameRowIndex+1, 8).setValue("");
+    // keep or clear hostClientId based on checkbox option
+    var clearHost = (e.parameter.clearHost === "true");
+    if (clearHost) {
+      sheet.getRange(gameRowIndex+1, 8).setValue("");
+    }
+    // always clear gameStatus so lobby can restart
     sheet.getRange(gameRowIndex+1, 9).setValue("");
 
     // randomize winnerIndex within the allowed range (1 to maxPlayers)
@@ -518,14 +522,18 @@ function handleRegisterPlayer(e) {
 
     // Check if this clientId already has a slot
     var playerNum = -1;
+    var playerStatus = "";
     var currentCount = 0;
     for (var p = 0; p < 20; p++) {
       var playerColIndex = 9 + p; // Players start at column 10 (array index 9)
       var cellValue = data[gameRowIndex - 1][playerColIndex] || "";
       if (cellValue !== "") {
         currentCount++;
-        if (cellValue === clientId && clientId !== "") {
+        if (cellValue === clientId || cellValue.startsWith(clientId + "_")) {
           playerNum = p + 1;
+          if (cellValue.includes("_")) {
+            playerStatus = cellValue.split("_")[1];
+          }
           break;
         }
       }
@@ -535,11 +543,17 @@ function handleRegisterPlayer(e) {
     if (playerNum !== -1) {
       var hostClientId = data[gameRowIndex - 1][7] || "";
       var isHost = (clientId === hostClientId);
-      return jsonResponse({ success: true, playerNum: playerNum, isHost: isHost });
+      return jsonResponse({ success: true, playerNum: playerNum, isHost: isHost, status: playerStatus });
     }
 
-    // if game is full, refuse
-    var maxPlayers = parseInt(sheet.getRange(gameRowIndex, 3).getValue(), 10);
+    // Check game status
+    var gameStatus = data[gameRowIndex - 1][2] || "";
+    if (gameStatus === "Started") {
+      return jsonResponse({ success: false, error: "Lobby is full" });
+    }
+
+    // if game is full (reached maxPlayers), refuse
+    var maxPlayers = parseInt(data[gameRowIndex - 1][2], 10);
     if (currentCount >= maxPlayers) {
       return jsonResponse({ success: false, error: "Game is full" });
     }
@@ -781,7 +795,7 @@ function handlePollGameStatus(e) {
       var playerVal = gameRow[playerColIndex] || "";
       if (playerVal !== "") {
         connectedPlayers++;
-        if (/_((scratched)|(replay))$/.test(playerVal)) {
+        if (/_scratched$/.test(playerVal)) {
           scratchedCount++;
         }
         if (playerVal.indexOf(clientId) === 0) {
@@ -918,27 +932,13 @@ function handleCheckHostStatus(e) {
     }
 
     if (!hostStillActive && currentHostClientId !== "") {
-      // Host disconnected, promote the first connected player
-      var newHostClientId = null;
-      for (var p = 0; p < 20; p++) {
-        var playerColIndex = 9 + p;  // Players start at column 10 (array index 9)
-        var playerVal = data[gameRowIndex - 1][playerColIndex] || "";
-        if (playerVal !== "") {
-          newHostClientId = playerVal;
-          break;
-        }
-      }
-
-      if (newHostClientId) {
-        sheet.getRange(gameRowIndex, 8).setValue(newHostClientId);  // Column 8 = hostClientId
-        Logger.log("Promoted new host for game " + gameId + ": " + newHostClientId);
-        
-        return jsonResponse({
-          success: true,
-          hostChanged: true,
-          newHostClientId: newHostClientId
-        });
-      }
+      // Host disconnected, do NOT reassign for now. Keep host stable.
+      Logger.log("Host disconnected detected for game " + gameId + ", stable host retention mode active");
+      return jsonResponse({
+        success: true,
+        hostChanged: false,
+        currentHostClientId: currentHostClientId
+      });
     }
 
     return jsonResponse({
@@ -1068,25 +1068,6 @@ function logToSheet(record) {
     sheet = ss.insertSheet(CONFIG.SHEET_TAB);
   }
 
-  // Check and update headers if necessary
-  if (sheet.getLastRow() > 0) {
-    var currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-    var hasGroomFileId = currentHeaders.length >= 9 && currentHeaders[8] === "groomFileId";
-    if (!hasGroomFileId) {
-      // Insert groomFileId column after groomUrl (column 8)
-      sheet.insertColumnAfter(8);
-      sheet.getRange(1, 9).setValue("groomFileId");
-      sheet.getRange(1, 9).setFontWeight("bold");
-    }
-    var hasGameStatus = currentHeaders.length >= 10 && currentHeaders[9] === "gameStatus";
-    if (!hasGameStatus) {
-      // Insert gameStatus column after gameStarted (column 9)
-      sheet.insertColumnAfter(9);
-      sheet.getRange(1, 10).setValue("gameStatus");
-      sheet.getRange(1, 10).setFontWeight("bold");
-    }
-  }
-
   // Write column headers on very first use
   if (sheet.getLastRow() === 0) {
     var headers = ["gameId", "name", "maxPlayers", "winnerIndex", "createdAt",
@@ -1119,6 +1100,58 @@ function logToSheet(record) {
   
   // Append the game record as a new row
   sheet.appendRow(rowData);
+}
+
+/**
+ * handleUpdatePlayerStatus(e)
+ * Updates the status of a player in the game.
+ */
+function handleUpdatePlayerStatus(e) {
+  var gameId = e.parameter.gameId;
+  var clientId = e.parameter.clientId;
+  var status = e.parameter.status;
+  
+  if (!gameId || !clientId || !status) {
+    return jsonResponse({ success: false, error: "Missing parameters" });
+  }
+
+  try {
+    var ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+    var sheet = ss.getSheetByName(CONFIG.SHEET_TAB);
+    
+    if (!sheet) {
+      return jsonResponse({ success: false, error: "Game not found" });
+    }
+
+    var data = sheet.getDataRange().getValues();
+    var gameRowIndex = -1;
+
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][0] === gameId) {
+        gameRowIndex = i + 1;
+        break;
+      }
+    }
+
+    if (gameRowIndex === -1) {
+      return jsonResponse({ success: false, error: "Game not found" });
+    }
+
+    // Find the player column
+    for (var p = 0; p < 20; p++) {
+      var playerCol = 9 + p;
+      var playerVal = data[gameRowIndex - 1][playerCol] || "";
+      if (playerVal === clientId || playerVal.startsWith(clientId + "_")) {
+        sheet.getRange(gameRowIndex, playerCol + 1).setValue(status ? clientId + "_" + status : clientId);
+        return jsonResponse({ success: true });
+      }
+    }
+
+    return jsonResponse({ success: false, error: "Player not found" });
+  } catch (err) {
+    Logger.log("ERROR in handleUpdatePlayerStatus: " + err.message);
+    return jsonResponse({ success: false, error: err.message });
+  }
 }
 
 

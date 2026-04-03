@@ -40,6 +40,7 @@ let isHost = false; // whether this player is the host
 let gameStarted = false;
 let currentMaxPlayers = 0;
 let hostMessageToggle = 0; // Toggle counter for alternating host messages
+let playerStatus = ""; // player's current status
 
 let targetX;
 let targetY;
@@ -182,8 +183,9 @@ async function registerPlayer() {
   playerNum = json.playerNum;
   isHost = json.isHost || false;
   isWinner = (playerNum === gameData.winnerIndex);
+  playerStatus = json.status || "";
   
-  console.log("Player registered: playerNum=" + playerNum + ", isHost=" + isHost + ", isWinner=" + isWinner);
+  console.log("Player registered: playerNum=" + playerNum + ", isHost=" + isHost + ", isWinner=" + isWinner + ", status=" + playerStatus);
 }
 
 /**
@@ -539,7 +541,7 @@ function showError(message) {
 /**
  * Initialize the game page
  */
-function initPage() {
+async function initPage() {
   if (!document.createElement('canvas').getContext) {
     showError('This browser does not support canvas');
     return;
@@ -552,30 +554,81 @@ function initPage() {
     loadingDiv.style.display = 'none';
   }
 
-  document.getElementById("id01").style.display = 'block';
-  
+  // Poll for latest status to ensure isWinner is up to date
+  const pollPayload = new FormData();
+  pollPayload.append("action", "pollGameStatus");
+  pollPayload.append("gameId", gameID);
+  if (clientId) pollPayload.append("clientId", clientId);
+
+  try {
+    const pollResponse = await fetch(GAS_ENDPOINT, { method: "POST", body: pollPayload });
+    const pollJson = await pollResponse.json();
+    if (pollJson.success) {
+      const newWinnerIndex = pollJson.winnerIndex;
+      if (newWinnerIndex !== gameData.winnerIndex) {
+        gameData.winnerIndex = newWinnerIndex;
+        isWinner = (playerNum === newWinnerIndex);
+        console.log("Winner index updated before setup: " + newWinnerIndex);
+      }
+      // Also update maxPlayers if changed
+      if (pollJson.maxPlayers !== currentMaxPlayers) {
+        currentMaxPlayers = pollJson.maxPlayers;
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to poll before setup: " + err.message);
+  }
+
   // Groom name display
   const babyEl = document.getElementById("baby");
   if (babyEl) babyEl.textContent = 'Baby ' + gameData.groomName;
   const surnameEl = document.getElementById("surname");
   if (surnameEl) surnameEl.textContent = gameData.groomName;
 
-  // Sound setup
-  document.querySelector(".nosoundbtn").addEventListener("click", function() {
-    document.getElementById("id01").style.display = 'none';
-    nosound = true;
-    setupScratcher();
-  });
+  if (playerStatus === "scratched") {
+    // Show finished state
+    const instEl = document.getElementById("inst-text");
+    if (instEl) {
+      instEl.style.display = 'block';
+      if (isWinner) {
+        instEl.innerHTML = "<span class='win-message'>🎉 YOU WIN! 🎉</span>";
+      } else {
+        instEl.innerHTML = "<span class='lose-message'>You didn't win this time!</span>";
+      }
+    }
+    document.getElementById("resetbutton").style.display = 'block';
+    if (isHost) {
+      document.getElementById("reset-controls").style.display = 'block';
+      document.getElementById('host-only-checkbox').style.display = 'block';
+      const btn = document.getElementById("resetgamebtn");
+      if (btn) {
+        btn.style.display = 'inline-block';
+      }
+    }
+    if (isWinner) {
+      confetti_effect();
+    }
+  } else {
+    // Show sound dialog for normal scratch completion
+    document.getElementById("id01").style.display = 'block';
+    
+    // Sound setup
+    document.querySelector(".nosoundbtn").addEventListener("click", function() {
+      document.getElementById("id01").style.display = 'none';
+      nosound = true;
+      setupScratcher();
+    });
 
-  document.querySelector(".withsoundbtn").addEventListener("click", function() {
-    document.getElementById("id01").style.display = 'none';
-    nosound = false;
-    soundHandle = document.getElementById("soundHandle");
-    soundHandle.autoplay = false;
-    soundHandle.muted = false;
-    // Audio will be played after scratchesended event
-    setupScratcher();
-  });
+    document.querySelector(".withsoundbtn").addEventListener("click", function() {
+      document.getElementById("id01").style.display = 'none';
+      nosound = false;
+      soundHandle = document.getElementById("soundHandle");
+      soundHandle.autoplay = false;
+      soundHandle.muted = false;
+      // Audio will be played after scratchesended event
+      setupScratcher();
+    });
+  }
 
   document.addEventListener("visibilitychange", function() {
     if (document.visibilityState !== "visible") {
@@ -585,6 +638,11 @@ function initPage() {
   });
 
   document.getElementById("resetbutton").style.backgroundColor = colortxt;
+
+  // Start reset detection polling for non-host players who have already finished scratching
+  if (!isHost && playerStatus === "scratched") {
+    startResetDetectionPolling();
+  }
 }
 
 /**
@@ -657,21 +715,16 @@ function setupScratcher() {
     if (!triggered && pct > p) {
       triggered = true;
 
-      // Send status update to backend IMMEDIATELY
-      updatePlayerStatus('scratched').catch(err => {
-        console.error('Failed to update status:', err);
-      });
-
       soundHandle.volume = 0.5;
       if (isWinner && !nosound && soundHandle) {
         soundHandle.src = 'audio/celebrate.mp3';
       } else {
         soundHandle.src = 'audio/lost.mp3';
       }
-        soundHandle.currentTime = 0;
-        soundHandle.play().catch(err => {
-          console.log('Could not play audio:', err);
-        });
+      soundHandle.currentTime = 0;
+      soundHandle.play().catch(err => {
+        console.log('Could not play audio:', err);
+      });
       // Show win message
       const instEl = document.getElementById("inst-text");
       if (instEl) {
@@ -693,8 +746,15 @@ function setupScratcher() {
 
       // wait until confetti animation completes (~10s) before showing the scratch-again button
       setTimeout(function() {
+        // mark this player scratched after the event window, to avoid early reset by host
+        updatePlayerStatus('scratched').catch(err => {
+          console.error('Failed to update status after reveal delay:', err);
+        });
+
         document.getElementById("resetbutton").style.display = 'block';
         if (isHost) {
+          document.getElementById("reset-controls").style.display = 'block';
+          document.getElementById('host-only-checkbox').style.display = 'block';
           const btn = document.getElementById("resetgamebtn");
           if (btn) {
             btn.style.display = 'inline-block';
@@ -719,8 +779,8 @@ function setupScratcher() {
   }
 
 function onResetClicked(scratchers) {
-    // tell backend we're replaying
-    updatePlayerStatus('replay').catch(() => {});
+    // no status update on replay; keep existing _scratched state
+    // (player stays scratched once scratched)
 
     pct = 0;
     triggered = false;
@@ -728,6 +788,8 @@ function onResetClicked(scratchers) {
     soundHandle.currentTime = 0;
     const resetBtn = document.getElementById("resetbutton");
     if (resetBtn) resetBtn.style.display = 'none';
+    const resetControls = document.getElementById("reset-controls");
+    if (resetControls) resetControls.style.display = 'none';
     // hide reset game while scratching again
     const resetGameBtn2 = document.getElementById("resetgamebtn");
    resetGameBtn2.style.display = "none";
@@ -750,7 +812,7 @@ function onResetClicked(scratchers) {
 
 /**
  * Send a status update to the server for this client.
- * @param {string} statusSuffix  e.g. 'scratched' or 'replay'
+ * @param {string} statusSuffix  e.g. 'scratched'
  */
 async function updatePlayerStatus(statusSuffix) {
   if (!clientId || !gameID) return;
@@ -841,10 +903,14 @@ async function hostResetGame() {
     return;
   }
 
+  const clearHostCheckbox = document.getElementById('reset-clear-host');
+  const clearHost = clearHostCheckbox && clearHostCheckbox.checked;
+
   const payload = new FormData();
   payload.append('action', 'resetGame');
   payload.append('gameId', gameID);
   if (clientId) payload.append('clientId', clientId);
+  payload.append('clearHost', clearHost ? 'true' : 'false');
 
   try {
     const res = await fetch(GAS_ENDPOINT, { method: 'POST', body: payload });
