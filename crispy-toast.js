@@ -9,8 +9,8 @@ CrispyToast.createToast = function(message, options) {
   var toast = {
     message: message,
     type: options.type || 'message',
-    position: options.position || 'top-right',
-    timeout: options.timeout || 1000
+    position: options.position || 'center-center',
+    timeout: options.timeout || 2000
   };
 
   CrispyToast.toasts.push(toast);

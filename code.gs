@@ -376,9 +376,30 @@ function handleUpdatePlayerStatus(e) {
       var colIndex = 9 + p;
       var val = data[gameRowIndex][colIndex];
       if (val && val.toString().indexOf(clientId) === 0) {
-        // update with suffix
-        var newVal = status ? clientId + "_" + status : clientId;
-        sheet.getRange(gameRowIndex+1, colIndex+1).setValue(newVal);
+        // Check current status and only update if appropriate
+        var currentStatus = val.toString();
+        var shouldUpdate = false;
+        var newVal = currentStatus;
+
+        if (status === 'revealed') {
+          // Only add _revealed if player has no status suffix (just clientId)
+          if (currentStatus === clientId) {
+            newVal = clientId + "_revealed";
+            shouldUpdate = true;
+          }
+          // If already _scratched or _revealed, don't change
+        } else if (status === 'scratched') {
+          // Only add _scratched if current status is _revealed
+          if (currentStatus === clientId + "_revealed") {
+            newVal = clientId + "_scratched";
+            shouldUpdate = true;
+          }
+          // If already _scratched or just clientId, don't change
+        }
+
+        if (shouldUpdate) {
+          sheet.getRange(gameRowIndex+1, colIndex+1).setValue(newVal);
+        }
         return jsonResponse({ success: true });
       }
     }
@@ -434,34 +455,41 @@ function handleResetGame(e) {
       return jsonResponse({ success: false, error: "Unauthorized" });
     }
 
-    // verify all connected players have scratched before allowing reset
+    // keep or clear hostClientId based on checkbox option
+    var clearHost = (e.parameter.clearHost === "true");
+
+    // verify ALL connected players (including host) have scratched before allowing reset
     var connectedPlayers = 0;
     var scratchedCount = 0;
     for (var p = 0; p < 20; p++) {
       var val = gameRow[9 + p] || ""; // player columns start at index 9
       if (val !== "") {
         connectedPlayers++;
-        // treat only explicit status suffixes as scratched
-        if (/_scratched$/.test(val)) {
+        // check for _revealed or _scratched suffix specifically
+        if (/_(?:revealed|scratched)$/.test(val)) {
           scratchedCount++;
         }
       }
     }
+    // All connected players must have scratched, regardless of clearHost option
     if (connectedPlayers > 0 && scratchedCount !== connectedPlayers) {
       return jsonResponse({ success: false, error: "Cannot reset until all players have scratched" });
     }
 
-    // clear player cells
-    var clearValues = [];
-    for (var p = 0; p < 20; p++) {
-      clearValues.push([""]);
-    }
-    sheet.getRange(gameRowIndex+1, 10, 1, 20).setValues([clearValues.map(function(v){return v[0];})]);
-
-    // keep or clear hostClientId based on checkbox option
-    var clearHost = (e.parameter.clearHost === "true");
+    // clear player cells based on clearHost option
     if (clearHost) {
+      // Clear all players (player1 through player20)
+      sheet.getRange(gameRowIndex+1, 10, 1, 20).setValues([Array(20).fill("")]);
+      // Clear the host player ID
       sheet.getRange(gameRowIndex+1, 8).setValue("");
+    } else {
+      // Keep host: remove suffix from player1, clear player2-20, keep hostClientId
+      var hostPlayer1Value = gameRow[9] || "";  // Column J (index 9): player1
+      var parts = hostPlayer1Value.split("_");
+      var hostClientIdOnly = parts.slice(0, -1).join("_");  // Remove last part (suffix), keep clientId
+      sheet.getRange(gameRowIndex+1, 10).setValue(hostClientIdOnly);  // Update player1 with clientId only
+      sheet.getRange(gameRowIndex+1, 11, 1, 19).setValues([Array(19).fill("")]);  // Clear player2-20
+      // hostClientId in column 8 is NOT cleared, so host persists
     }
     // always clear gameStatus so lobby can restart
     sheet.getRange(gameRowIndex+1, 9).setValue("");
@@ -795,7 +823,8 @@ function handlePollGameStatus(e) {
       var playerVal = gameRow[playerColIndex] || "";
       if (playerVal !== "") {
         connectedPlayers++;
-        if (/_scratched$/.test(playerVal)) {
+        // check for _revealed or _scratched suffix specifically
+        if (/_(?:revealed|scratched)$/.test(playerVal)) {
           scratchedCount++;
         }
         if (playerVal.indexOf(clientId) === 0) {

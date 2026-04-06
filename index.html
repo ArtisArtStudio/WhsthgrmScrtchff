@@ -17,7 +17,6 @@
 <link href="main.css" rel="stylesheet" type="text/css">
 <link rel="stylesheet" type="text/css" href="main_landscape.css" media="screen and (orientation: landscape) and (max-width: 1023px)">
 <link href="crispy-toast.css" rel="stylesheet" type="text/css"/>
-<script src="crispy-toast.js" type="text/javascript"></script>
 <script src="scratcher2.js" type="text/javascript"></script>
 <script src="main.js" type="module"></script>
 <!-- begin common pre2 -->
@@ -139,6 +138,15 @@
   <div style="color:var(--panel-color); font-weight:bold; font-size:18px; margin-bottom:15px;">⚠️ Lobby Full</div>
   <div style="color:#ccc; font-size:14px; margin-bottom:20px;">The host has reduced the player limit. This slot is no longer available.</div>
   <button id="kicked-return-btn" style="padding:10px 20px; background:var(--panel-color); color:white; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">Return to Home</button>
+</div>
+
+<!-- Message Panel for errors/info (replaces toast for important messages) -->
+<div id="message-panel" class="message-panel">
+  <div class="panel-title" id="panel-title"></div>
+  <div class="panel-content">
+    <div class="panel-message" id="panel-message"></div>
+  </div>
+  <button id="panel-close-btn" class="panel-button">OK</button>
 </div>
 
 </html>

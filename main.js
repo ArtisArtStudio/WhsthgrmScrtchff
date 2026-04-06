@@ -65,6 +65,53 @@ let soundHandle = new Audio();
 let triggered = false;
 let nosound = true;
 
+// ─── MESSAGE PANEL HELPERS ───────────────────────────────────────────────────
+
+/**
+ * showMessagePanel(title, message, type='error', autoClose=false)
+ * Displays a modal message panel (alternative to crispy-toast for important messages)
+ * @param {string} title - Panel title
+ * @param {string} message - Panel message
+ * @param {string} type - 'error', 'info', or 'warning'
+ * @param {boolean|number} autoClose - If true, auto-close after 1.5s. If number, auto-close after that many ms
+ */
+function showMessagePanel(title, message, type = 'error', autoClose = false) {
+  const panel = document.getElementById('message-panel');
+  const titleEl = document.getElementById('panel-title');
+  const msgEl = document.getElementById('panel-message');
+  const closeBtn = document.getElementById('panel-close-btn');
+  
+  titleEl.textContent = title;
+  msgEl.textContent = message;
+  
+  // Remove previous type classes
+  panel.classList.remove('error', 'info', 'warning');
+  panel.classList.add(type, 'show');
+  
+  // Handle auto-close
+  if (autoClose) {
+    const delay = typeof autoClose === 'number' ? autoClose : 1500;
+    setTimeout(() => {
+      closeMessagePanel();
+    }, delay);
+    
+    // Hide the close button for auto-close messages
+    closeBtn.style.display = 'none';
+  } else {
+    // Show the close button for manual-close messages
+    closeBtn.style.display = 'block';
+  }
+}
+
+/**
+ * closeMessagePanel()
+ * Closes the message panel
+ */
+function closeMessagePanel() {
+  const panel = document.getElementById('message-panel');
+  panel.classList.remove('show');
+}
+
 // ─── INITIALIZATION ──────────────────────────────────────────────────────────
 
 document.addEventListener("DOMContentLoaded", async function() {
@@ -154,7 +201,7 @@ document.addEventListener("DOMContentLoaded", async function() {
   } catch (err) {
     // registration or initialization failed
     showError("Error: " + err.message);
-    CrispyToast.error(err.message);
+    showMessagePanel('❌ Error', err.message, 'error');
   }
 });
 
@@ -253,13 +300,13 @@ async function waitInLobby() {
             // I became the host!
             isHost = true;
             showHostControlPanel();
-            CrispyToast.success("You are now the host!");
-            console.log("Promoted to host");
+            showMessagePanel('🎮 Host Status', "You are now the host!", 'info');
+            //console.log("Promoted to host");
           } else if (isHost && json.hostClientId !== clientId) {
             // I was demoted (shouldn't happen, but handle it)
             isHost = false;
             hideHostControlPanel();
-            CrispyToast.warning("Host role transferred");
+            showMessagePanel('⚠️ Host Status', "Host role transferred", 'warning');
           }
           gameData.hostClientId = json.hostClientId;
         }
@@ -406,16 +453,17 @@ async function hostStartGame() {
     console.log("Start game response:", json);
 
     if (json.success) {
-      CrispyToast.success("Game started!");
+      showMessagePanel('🎮 Game Started', "The game has begun!", 'info', true);
+      hideHostControlPanel();
       gameStarted = true;
       allPlayersConnected = true;
       // The lobby loop will detect the change and exit
     } else {
-      CrispyToast.error(json.error || "Failed to start game");
+      showMessagePanel('❌ Error', json.error || "Failed to start game", 'error');
       if (statusMsg) statusMsg.textContent = "Error: " + (json.error || "Failed");
     }
   } catch (err) {
-    CrispyToast.error("Error: " + err.message);
+    showMessagePanel('❌ Error', "Error: " + err.message, 'error');
     if (statusMsg) statusMsg.textContent = "Error: " + err.message;
   } finally {
     if (btn) btn.disabled = false;
@@ -429,7 +477,7 @@ async function hostChangeMaxPlayers(delta) {
   const newMax = currentMaxPlayers + delta;
   
   if (newMax < 1 || newMax > 20) {
-    CrispyToast.warning("Max players must be between 1 and 20");
+    showMessagePanel('⚠️ Invalid Input', "Max players must be between 1 and 20", 'warning');
     return;
   }
 
@@ -455,7 +503,7 @@ async function hostChangeMaxPlayers(delta) {
       updateHostPanelMaxPlayers(newMax);
       
       if (json.droppedCount > 0) {
-        CrispyToast.info("Reduced limit. " + json.droppedCount + " player(s) removed");
+        showMessagePanel('ℹ️ Players Removed', "Reduced limit. " + json.droppedCount + " player(s) removed", 'info');
       }
       
       if (statusMsg) statusMsg.textContent = "Max: " + newMax;
@@ -463,11 +511,11 @@ async function hostChangeMaxPlayers(delta) {
         if (statusMsg) statusMsg.textContent = "";
       }, 2000);
     } else {
-      CrispyToast.error(json.error || "Failed to update");
+      showMessagePanel('❌ Error', json.error || "Failed to update", 'error');
       if (statusMsg) statusMsg.textContent = "Error: " + (json.error || "Failed");
     }
   } catch (err) {
-    CrispyToast.error("Error: " + err.message);
+    showMessagePanel('❌ Error', "Error: " + err.message, 'error');
     if (statusMsg) statusMsg.textContent = "Error: " + err.message;
   }
 }
@@ -692,7 +740,7 @@ function setupScratcher() {
     if (backgroundImage !== 'images/s2bg.jpg') {
       // if groom image failed, log it and still start with default but mark it
       console.warn('Groom image inaccessible, using default background instead');
-      CrispyToast.warning('Unable to load groom photo; using default image');
+      showMessagePanel('⚠️ Image Loading', 'Unable to load groom photo; using default image', 'warning');
       backgroundImage = 'images/s2bg.jpg';
       Promise.all([
         preloadImage(backgroundImage),
@@ -739,6 +787,11 @@ function setupScratcher() {
     document.querySelectorAll(".images").forEach(el => el.style.display = 'none');
 
       scratchers[0].clear();
+
+      // mark this player as revealed immediately so host reset is not blocked by a tab close
+      updatePlayerStatus('revealed').catch(err => {
+        console.error('Failed to update status on reveal:', err);
+      });
 
       if (isWinner) {
         confetti_effect();
@@ -899,7 +952,7 @@ async function hostResetGame() {
   // double-check on server side that every connected player has scratched
   const everyoneDone = await checkAllScratched();
   if (!everyoneDone) {
-    CrispyToast.info('Cannot reset: not all players have finished scratching');
+    showMessagePanel('⚠️ Cannot Reset', 'Not all players have finished scratching yet. Please wait for everyone to reveal their result.', 'error');
     return;
   }
 
@@ -916,18 +969,18 @@ async function hostResetGame() {
     const res = await fetch(GAS_ENDPOINT, { method: 'POST', body: payload });
     const json = await res.json();
     if (json.success) {
-      CrispyToast.success('Game has been reset');
+      showMessagePanel('✅ Game Reset', 'Game has been reset successfully', 'info');
       // reload so everyone has to rejoin
       window.location.reload();
     } else {
       if (json.error && json.error.indexOf('Cannot reset until all players') === 0) {
-        CrispyToast.info(json.error);
+        showMessagePanel('⚠️ Cannot Reset', json.error, 'error');
       } else {
-        CrispyToast.error(json.error || 'Failed to reset game');
+        showMessagePanel('❌ Error', json.error || 'Failed to reset game', 'error');
       }
     }
   } catch (e) {
-    CrispyToast.error('Reset error: ' + e.message);
+    showMessagePanel('❌ Error', 'Reset error: ' + e.message, 'error');
   }
 }
 
@@ -940,6 +993,9 @@ async function hostResetGame() {
   window.addEventListener('resize', function() {
     positionCanvas();
   });
+
+  // Message panel close button
+  document.getElementById('panel-close-btn').addEventListener('click', closeMessagePanel);
 }
 
 /**

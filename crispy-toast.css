@@ -118,19 +118,130 @@
 }
 .crispy-toast.top-center {
   top: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+}
+
+/* Error/Info Panel - replaces toast for important messages */
+.message-panel {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(20, 20, 20, 0.98);
+  border: 2px solid var(--panel-color, #ff6b9d);
+  border-radius: 8px;
+  padding: 20px;
+  z-index: 1001;
+  text-align: center;
+  font-family: Roboto, sans-serif;
+  min-width: 280px;
+  max-width: min(500px, 90vw);
+  max-height: min(400px, 80vh);
+  overflow: hidden;
+  display: none;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.message-panel.show {
+  display: block;
+}
+
+.message-panel.error {
+  border-color: var(--dark-red);
+}
+
+.message-panel.error .panel-title {
+  color: var(--dark-red);
+}
+
+.message-panel.info {
+  border-color: var(--dark-cyan);
+}
+
+.message-panel.info .panel-title {
+  color: var(--dark-cyan);
+}
+
+.message-panel.warning {
+  border-color: var(--dark-orange);
+}
+
+.message-panel.warning .panel-title {
+  color: var(--dark-orange);
+}
+
+.panel-title {
+  font-weight: bold;
+  font-size: 18px;
+  margin-bottom: 15px;
+}
+
+.panel-message {
+  color: #ccc;
+  font-size: 14px;
+  margin-bottom: 20px;
+  line-height: 1.5;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  hyphens: auto;
+  white-space: pre-wrap;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+
+.panel-content {
+  max-height: calc(80vh - 120px);
+  overflow-y: auto;
+  padding-right: 5px;
+}
+
+.panel-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.panel-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.panel-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+.panel-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.panel-button {
+  padding: 10px 20px;
+  background: var(--panel-color, #ff6b9d);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.panel-button:hover {
+  opacity: 0.9;
+}
+}
+
+.crispy-toast.center-center {
+  top: 3rem;
+  left: 50%;
+  transform: translateX(-50%);
   display: block;
   margin: auto;
   width: 50%;
-  position: absolute;
   margin-left: auto;
   margin-right: auto;
-  left: 0;
-  right: 0;
   text-align: center;
-}
-.crispy-toast.bottom-left {
-  bottom: 20px;
-  left: 20px;
 }
 
 /* Add more position styles as needed */
