@@ -112,9 +112,40 @@ function closeMessagePanel() {
   panel.classList.remove('show');
 }
 
+// Flag to prevent infinite reload loops
+let hasAttemptedReload = false;
+
+/**
+ * Handles the OK button click - performs action based on message type
+ */
+function handleMessagePanelOk() {
+  const panel = document.getElementById('message-panel');
+  const msgEl = document.getElementById('panel-message');
+  const messageText = msgEl?.textContent || '';
+  
+  // Check if message contains "failed to fetch" or similar network errors
+  if (!hasAttemptedReload &&
+      (messageText.toLowerCase().includes('failed to fetch') || 
+       messageText.toLowerCase().includes('network') ||
+       messageText.toLowerCase().includes('cors'))) {
+    // Force page refresh for network errors (only once per session)
+    hasAttemptedReload = true;
+    location.reload();
+  } else {
+    // For all other messages, just close the panel
+    closeMessagePanel();
+  }
+}
+
 // ─── INITIALIZATION ──────────────────────────────────────────────────────────
 
 document.addEventListener("DOMContentLoaded", async function() {
+  // Attach message panel button listener EARLY to ensure it's always available
+  const panelCloseBtn = document.getElementById('panel-close-btn');
+  if (panelCloseBtn) {
+    panelCloseBtn.addEventListener('click', handleMessagePanelOk);
+  }
+  
   // persistent client id for reconnect logic
   clientId = localStorage.getItem('scratchClientId');
   if (!clientId) {
@@ -235,6 +266,8 @@ async function registerPlayer() {
   console.log("Player registered: playerNum=" + playerNum + ", isHost=" + isHost + ", isWinner=" + isWinner + ", status=" + playerStatus);
 }
 
+let hostPanelShown = false; // Track if host panel has been shown
+
 /**
  * Wait in the lobby for the host to start the game or for any status changes
  */
@@ -243,10 +276,9 @@ async function waitInLobby() {
   const startTime = Date.now();
   const pollInterval = 1500; // 1.5 seconds
   
-  // Show appropriate message
+  // Show appropriate message (but don't show host panel yet)
   if (isHost) {
     showLoading("Waiting for players...");
-    showHostControlPanel();
   } else {
     showLoading("Waiting for other players...");
   }
@@ -270,6 +302,12 @@ async function waitInLobby() {
       if (json.success) {
         const newMaxPlayers = json.maxPlayers;
         const newWinnerIndex = json.winnerIndex;
+        
+        // For host: show the control panel only after first successful poll and game hasn't started
+        if (isHost && !hostPanelShown && json.gameStatus !== "Started") {
+          showHostControlPanel();
+          hostPanelShown = true;
+        }
         
         // Update winnerIndex if it changed
         if (newWinnerIndex !== gameData.winnerIndex) {
@@ -297,15 +335,19 @@ async function waitInLobby() {
         // Check if host changed
         if (json.hostClientId !== gameData.hostClientId) {
           if (json.hostClientId === clientId && !isHost) {
-            // I became the host!
+            // I became the host! (only show panel if game hasn't started)
             isHost = true;
-            showHostControlPanel();
+            if (json.gameStatus !== "Started") {
+              showHostControlPanel();
+              hostPanelShown = true;
+            }
             showMessagePanel('🎮 Host Status', "You are now the host!", 'info');
             //console.log("Promoted to host");
           } else if (isHost && json.hostClientId !== clientId) {
             // I was demoted (shouldn't happen, but handle it)
             isHost = false;
             hideHostControlPanel();
+            hostPanelShown = false;
             showMessagePanel('⚠️ Host Status', "Host role transferred", 'warning');
           }
           gameData.hostClientId = json.hostClientId;
@@ -993,9 +1035,6 @@ async function hostResetGame() {
   window.addEventListener('resize', function() {
     positionCanvas();
   });
-
-  // Message panel close button
-  document.getElementById('panel-close-btn').addEventListener('click', closeMessagePanel);
 }
 
 /**
