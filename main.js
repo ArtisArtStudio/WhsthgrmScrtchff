@@ -313,7 +313,7 @@ async function waitInLobby() {
         if (newWinnerIndex !== gameData.winnerIndex) {
           gameData.winnerIndex = newWinnerIndex;
           isWinner = (playerNum === newWinnerIndex);
-          console.log("Winner index updated to: " + newWinnerIndex);
+          //console.log("Winner index updated to: " + newWinnerIndex);
         }
 
         // Update maxPlayers if it changed
@@ -674,51 +674,30 @@ async function initPage() {
   if (babyEl) babyEl.textContent = 'Baby ' + gameData.groomName;
   const surnameEl = document.getElementById("surname");
   if (surnameEl) surnameEl.textContent = gameData.groomName;
-
-  if (playerStatus === "scratched") {
-    // Show finished state
-    const instEl = document.getElementById("inst-text");
-    if (instEl) {
-      instEl.style.display = 'block';
-      if (isWinner) {
-        instEl.innerHTML = "<span class='win-message'>🎉 YOU WIN! 🎉</span>";
-      } else {
-        instEl.innerHTML = "<span class='lose-message'>You didn't win this time!</span>";
-      }
-    }
-    document.getElementById("resetbutton").style.display = 'block';
-    if (isHost) {
-      document.getElementById("reset-controls").style.display = 'block';
-      document.getElementById('host-only-checkbox').style.display = 'block';
-      const btn = document.getElementById("resetgamebtn");
-      if (btn) {
-        btn.style.display = 'inline-block';
-      }
-    }
-    if (isWinner) {
-      confetti_effect();
-    }
-  } else {
-    // Show sound dialog for normal scratch completion
-    document.getElementById("id01").style.display = 'block';
-    
-    // Sound setup
-    document.querySelector(".nosoundbtn").addEventListener("click", function() {
-      document.getElementById("id01").style.display = 'none';
-      nosound = true;
-      setupScratcher();
-    });
-
-    document.querySelector(".withsoundbtn").addEventListener("click", function() {
-      document.getElementById("id01").style.display = 'none';
-      nosound = false;
-      soundHandle = document.getElementById("soundHandle");
-      soundHandle.autoplay = false;
-      soundHandle.muted = false;
-      // Audio will be played after scratchesended event
-      setupScratcher();
-    });
+     // Start reset detection polling for non-host players who have already finished scratching
+     if (!isHost && (playerStatus === "scratched" || playerStatus === "revealed")) {
+    startResetDetectionPolling();
   }
+// Always show sound dialog on refresh (moved outside any conditional)
+  document.getElementById("id01").style.display = 'block';
+  
+  // Sound setup
+  document.querySelector(".nosoundbtn").addEventListener("click", function() {
+    document.getElementById("id01").style.display = 'none';
+    nosound = true;
+    setupScratcher();
+  });
+
+  document.querySelector(".withsoundbtn").addEventListener("click", function() {
+    document.getElementById("id01").style.display = 'none';
+    nosound = false;
+    soundHandle = document.getElementById("soundHandle");
+    soundHandle.autoplay = false;
+    soundHandle.muted = false;
+    // Audio will be played after scratchesended event
+    setupScratcher();
+  });
+
 
   document.addEventListener("visibilitychange", function() {
     if (document.visibilityState !== "visible") {
@@ -729,10 +708,6 @@ async function initPage() {
 
   document.getElementById("resetbutton").style.backgroundColor = colortxt;
 
-  // Start reset detection polling for non-host players who have already finished scratching
-  if (!isHost && playerStatus === "scratched") {
-    startResetDetectionPolling();
-  }
 }
 
 /**
@@ -805,16 +780,21 @@ function setupScratcher() {
     if (!triggered && pct > p) {
       triggered = true;
 
-      soundHandle.volume = 0.5;
-      if (isWinner && !nosound && soundHandle) {
-        soundHandle.src = 'audio/celebrate.mp3';
-      } else {
-        soundHandle.src = 'audio/lost.mp3';
+      // 1. Only attempt to play sound if nosound is FALSE
+      if (!nosound && soundHandle) {
+          soundHandle.volume = 0.5;
+                    
+          if (isWinner) {
+              soundHandle.src = 'audio/celebrate.mp3';
+          } else {
+              soundHandle.src = 'audio/lost.mp3';
+          }
+          
+          soundHandle.currentTime = 0;
+          soundHandle.play().catch(err => {
+              console.log('Could not play audio:', err);
+          });
       }
-      soundHandle.currentTime = 0;
-      soundHandle.play().catch(err => {
-        console.log('Could not play audio:', err);
-      });
       // Show win message
       const instEl = document.getElementById("inst-text");
       if (instEl) {
@@ -873,6 +853,18 @@ function setupScratcher() {
     resetGameBtn.addEventListener('click', hostResetGame);
   }
 
+
+
+
+  // Handle orientation changes
+  window.addEventListener('orientationchange', function() {
+    positionCanvas();
+  });
+
+  window.addEventListener('resize', function() {
+    positionCanvas();
+  });
+}
 function onResetClicked(scratchers) {
     // no status update on replay; keep existing _scratched state
     // (player stays scratched once scratched)
@@ -956,7 +948,7 @@ let resetDetectionIntervalId = null;
  * For non-host players: starts polling to detect if the host has reset the game.
  * If gameStatus ever comes back empty, the game was reset, so reload.
  */
-function startResetDetectionPolling() {
+async function startResetDetectionPolling() {
   if (isHost || resetDetectionIntervalId) return; // only for non-hosts
 
   resetDetectionIntervalId = setInterval(async () => {
@@ -1025,18 +1017,6 @@ async function hostResetGame() {
     showMessagePanel('❌ Error', 'Reset error: ' + e.message, 'error');
   }
 }
-
-
-  // Handle orientation changes
-  window.addEventListener('orientationchange', function() {
-    positionCanvas();
-  });
-
-  window.addEventListener('resize', function() {
-    positionCanvas();
-  });
-}
-
 /**
  * Position and size the canvas
  */

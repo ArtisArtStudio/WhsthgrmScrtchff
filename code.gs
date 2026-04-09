@@ -1,3 +1,4 @@
+
 /**
  * Code.gs — Scratch-Off Game Backend
  * ─────────────────────────────────────────────────────────────────────────────
@@ -559,8 +560,8 @@ function handleRegisterPlayer(e) {
         currentCount++;
         if (cellValue === clientId || cellValue.startsWith(clientId + "_")) {
           playerNum = p + 1;
-          if (cellValue.includes("_")) {
-            playerStatus = cellValue.split("_")[1];
+          if (cellValue.indexOf(clientId + "_") === 0) {
+            playerStatus = cellValue.substring(clientId.length + 1);
           }
           break;
         }
