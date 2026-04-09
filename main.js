@@ -146,10 +146,12 @@ document.addEventListener("DOMContentLoaded", async function() {
     panelCloseBtn.addEventListener('click', handleMessagePanelOk);
   }
   
-  // persistent client id for reconnect logic
+  // NEW LOGIC: Use fingerprinting for device-dependent PID
   clientId = localStorage.getItem('scratchClientId');
+  
   if (!clientId) {
-    clientId = 'pid_' + Math.random().toString(36).substr(2,9);
+    // Generate an ID based on the device itself
+    clientId = generateDeviceFingerprint();
     localStorage.setItem('scratchClientId', clientId);
   }
   
@@ -865,6 +867,38 @@ function setupScratcher() {
     positionCanvas();
   });
 }
+/**
+ * Generates a consistent ID based on device hardware and browser traits.
+ * This remains the same even if IP changes or localStorage is cleared.
+ */
+function generateDeviceFingerprint() {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  // Add unique canvas rendering traits
+  ctx.textBaseline = "top";
+  ctx.font = "14px 'Arial'";
+  ctx.fillText("DevicePID", 2, 2);
+  const canvasData = canvas.toDataURL();
+  
+  // Collect stable hardware/software traits
+  const traits = [
+    navigator.userAgent.replace(/\d+/g, ''), // Browser type (version-agnostic)
+    [screen.width, screen.height].sort().join('x'), // Screen size
+    new Date().getTimezoneOffset(), // Timezone
+    navigator.hardwareConcurrency || 'unknown', // CPU cores
+    navigator.language
+  ].join('|');
+  
+  // Create a simple hash of the traits + canvas data
+  let str = canvasData + traits;
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0; // Convert to 32bit integer
+  }
+  return 'pid_' + Math.abs(hash).toString(36);
+}
+
 function onResetClicked(scratchers) {
     // no status update on replay; keep existing _scratched state
     // (player stays scratched once scratched)
