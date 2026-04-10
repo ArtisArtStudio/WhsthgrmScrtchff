@@ -682,12 +682,17 @@ async function initPage() {
   }
 // Always show sound dialog on refresh (moved outside any conditional)
   document.getElementById("id01").style.display = 'block';
-  
   // Sound setup
+  document.querySelector(".close").addEventListener("click", function() {
+    document.getElementById("id01").style.display = 'none';
+    nosound = true;
+    setupScratcher();
+  });
   document.querySelector(".nosoundbtn").addEventListener("click", function() {
     document.getElementById("id01").style.display = 'none';
     nosound = true;
     setupScratcher();
+
   });
 
   document.querySelector(".withsoundbtn").addEventListener("click", function() {
