@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WhoHasIt — Help & Instructions</title>
+  <style>
+    body{font-family: Arial, Helvetica, sans-serif;line-height:1.5;margin:20px;color:#222}
+    h1{font-size:1.6rem}
+    h2{font-size:1.15rem;margin-top:1rem}
+    p{margin:8px 0}
+    ul{margin:8px 0 16px 20px}
+    .note{background:#fff7cc;border-left:4px solid #ffd24d;padding:10px;margin:10px 0}
+    .error{background:#ffecec;border-left:4px solid #ff6b6b;padding:10px;margin:10px 0}
+    .small{font-size:0.9rem;color:#444}
+  </style>
+</head>
+<body>
+  <h1>WhoHasIt — Help & Instructions</h1>
+
+  <h2>Overview</h2>
+  <p>This is a personalized scratch-off party game meant for sharing with guests. You (the seller) will place a cropped head/face photo of the bride or groom into the game and give the buyer a link. Up to 20 players may join the game at once.</p>
+
+  <h2>How it works — Seller / Setup (what I do for you)</h2>
+  <ul>
+    <li><strong>Receive photo:</strong> The buyer sends you a clear photo of the person (head/face).</li>
+    <li><strong>Crop the photo:</strong> You crop the image to show only the head/face at the correct aspect ratio for the game.</li>
+    <li><strong>Place photo into the game:</strong> You upload or embed the cropped face into the game template and generate a game link for the buyer.</li>
+    <li><strong>Share link:</strong> Send the buyer the game link and any instructions for hosting (see Host steps below).</li>
+  </ul>
+
+  <h2>How You & Players Use It</h2>
+  <ol>
+    <li>Open the game link in a browser on a device (phone/tablet/desktop).</li>
+    <li>The person who will be the <strong>host</strong> should open the link first and start the game session (this may enable host-only controls such as resetting). Preferably this could be the person who bought this product.</li>
+    <li>Other players join by opening the same link. There is a maximum of <strong>20 players</strong> at once.</li>
+    <li>Each player can scratch the circle to reveal and guess the person. The UI shows the scratch canvas and the control area (such as Reset buttons and a host-only checkbox).</li>
+  </ol>
+
+  <h2>Resetting the game</h2>
+  <p>There are two reset controls available in the UI:</p>
+  <ul>
+    <li><strong>Scratch Again</strong> — resets only the scratch area for the current player so they can re-scratch.</li>
+    <li><strong>Reset Game (Host only)</strong> — clears game state for all players and returns the session to the start. Only the host can perform a full reset; use this when the player list should be cleared or you need to start a new round.</li>
+  </ul>
+  <p class="small">Host-only option: there is a checkbox ("Clear host on reset") that, when checked, will also clear host assignment when the Reset Game button is used. If left unchecked, the same host remains after reset. Only the host will see and be able to use the full Reset Game control.</p>
+
+  <h2>Troubleshooting & Common Errors</h2>
+  <div class="error"><strong>Game reports "Full" or "Game is full":</strong>
+    <p class="small">Cause: The game identifies players by the browser/tab session. There are two common situations that trigger a "game full" message.</p>
+    <ol>
+      <li><strong>Previously registered player reconnects using a different browser, device, or tab:</strong> The server still counts the original session as connected, so the new connection may be blocked with a "game full" message. Fix: the <strong>host</strong> should perform a <em>Reset Game</em> to clear all sessions and allow everyone to rejoin. <strong>Warning:</strong> performing a full reset will clear the current session state and may change who the winner is.</li>
+      <li><strong>An additional user attempts to join but the current connected player count equals the configured max players:</strong> If the lobby is at its current limit, new players cannot join. Fix: if the host increases the player limit (and it is below the absolute cap of 20), the additional player can join. Note: if the game is already at the absolute cap (20), new players cannot be added.</li>
+    </ol>
+    <p class="small">Additional fix: if a returning player reopens the same browser tab they used originally (or avoids switching browsers), they may reconnect without requiring a host reset.</p>
+  </div>
+
+  <h2>Other error cases & fixes</h2>
+  <ul>
+    <li><strong>Image not centered or cropped oddly:</strong> Re-send a properly cropped head/face photo. Crop so the face is centered with a little margin around the head.</li>
+    <li><strong>Scratch area not responding:</strong> Ensure JavaScript is enabled and that the page is not blocked by an ad or privacy blocker. Try reloading the page (same tab) and verify touch/mouse interaction permission.</li>
+    <li><strong>Audio or confetti not playing:</strong> Some browsers block autoplay of audio. The host/player may need to interact with the page (tap/click) to enable sound, or enable sound in the initial modal prompt if present.</li>
+    <li><strong>Buttons hidden or under the scratch circle:</strong> If layout issues occur after rotating the device, refresh the page or open the link in the original orientation. If problems persist, the host can reset the game which will reposition UI elements for new sessions.</li>
+    <li><strong>Players cannot join:</strong> Confirm the host started the session and that the link is correct. Make sure fewer than 20 players are currently connected (or ask the host to Reset Game).</li>
+  </ul>
+
+  <h2>Shown Error Messages & Fixes</h2>
+  <p class="small">Below are specific error messages the game may display and suggested fixes.</p>
+  <ul>
+    <li><strong>"Failed to fetch" / Network / CORS errors:</strong> The browser could not contact the game server or the response was blocked. Fix: check network, reload the page (same tab), ensure the GAS endpoint is reachable, and try again. The host can perform a full <em>Reset Game</em> if issues persist.</li>
+    <li><strong>"No game ID provided in URL":</strong> The page was opened without the required <code>?gameID=...</code> parameter. Fix: use the full link provided by the seller including the <code>gameID</code> query string.</li>
+    <li><strong>"Game not found: ...":</strong> The server does not recognize the provided game ID. Fix: verify the link, ask the seller to confirm the game was created, or request a new link.</li>
+    <li><strong>"Failed to register: ...":</strong> The server refused or could not complete player registration. Fix: retry in the same browser/tab; if the error indicates the game is full, ask the host to reset or increase the player limit.</li>
+    <li><strong>"Failed to load image: ..." or "Unable to load groom photo; using default image":</strong> The supplied groom/bride image could not be loaded. Fix: check your internet connection; contact support if not.</li>
+    <li><strong>"Failed to load default images: ...":</strong> The app couldn't load fallback images from the site. Fix: check your internet connection; contact support if not.</li>
+    <li><strong>"This browser does not support canvas":</strong> The user's browser is too old or disabled required features. Fix: open the game in a modern browser (Chrome, Firefox, Edge, Safari) and enable JavaScript.</li>
+    <li><strong>"Timeout waiting for host to start the game":</strong> The lobby waited too long for the host to start. Fix: confirm the host opened the link and pressed Start; refresh and rejoin if needed.</li>
+    <li><strong>"You were removed from the lobby":</strong> The server removed that player (kicked). Fix: rejoin using the same browser/tab or ask the host why you were removed.</li>
+    <li><strong>Host messages like "Failed to start game", "Failed to update", or "Reset error: ...":</strong> These indicate server-side or network problems during host actions. Fix: retry the action, check network connectivity, and if persistent, perform a full Reset Game or contact support.</li>
+    <li><strong>"Not all players have finished scratching yet. Please wait for everyone to reveal their result.":</strong> Host attempted reset before everyone finished. Fix: wait until all players finish, or coordinate participants to finish before resetting.</li>
+    <li><strong>"Game is full"</strong> Please refer to the previous red highlighted section.</li>
+    <li><strong>"Lobby is full":</strong> This can appear when the host reduces the configured player limit and the server removes one or more previously registered players to meet the new limit. Affected players may see the lobby/full message because their session was invalidated by the server.
+      Fix: the host should either increase the player limit back or perform a full <em>Reset Game</em> so everyone can rejoin. <strong>Warning:</strong> a full reset clears session state and may change who the winner is. If an extra (new) player wants to join but the lobby is at the configured limit, the host may increase the limit (if below 20) to admit them.
+    </li>
+</ul>
+
+  <h2>Support & Best Practices</h2>
+  <ul>
+    <li>Tell buyers to open the game link on the device they plan to use for joining and to avoid switching browsers/tabs mid-game.</li>
+    <li>Keep a copy of the cropped face image in case you need to re-embed it for a new session.</li>
+    <li>If the buyer reports persistent issues, ask for a screenshot and the browser name/version so you can reproduce locally.</li>
+  </ul>
+
+  <div class="note">
+  <strong>Contact Us:</strong>
+  <p>If you have other problems, you can message us through Etsy's messaging system or email us directly at <a href="mailto:artisartprintables@gmail.com">artisartprintables@gmail.com</a>. <strong>Please note that due to the time zone difference (we are at UTC+3), responses may take some time.</strong></p>
+</div>
+ </body>
+</html>

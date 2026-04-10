@@ -38,6 +38,15 @@ body {
 overscroll-behavior-y: contain; 
 }
 
+#help-link:hover {
+  color: #ff95c8;
+  opacity: 0.8;
+}
+
+#help-link:active {
+  opacity: 0.6;
+}
+
 /* @media only screen and (prefers-color-scheme: dark), (max-width: 760px), (min-device-width: 768px) and (max-device-width: 1024px) {
 .tablemobile {
     overflow-x: hidden;
@@ -283,7 +292,7 @@ margin: auto;
 }
 #resetbutton:hover {
   color: #000000;
-  background-color: snow!important;
+  background-color: rgb(255, 0, 0)!important;
 }
 #resetgamebtn {
   border: none;
@@ -300,12 +309,12 @@ margin: auto;
 }
 #resetgamebtn:hover:not(:disabled) {
   color: #000000;
-  background-color: snow!important;
+  background-color: rgb(255, 0, 0)!important;
 }
 #resetgamebtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  color: #888888;
+  color: #ff0000;
 }
 #baby{
   font-weight: 600;

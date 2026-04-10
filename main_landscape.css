@@ -115,6 +115,8 @@ text-align: right;
   display: inline-table;
   padding-right: 10px;
   width: calc(50% - 10px);
+  position: relative;
+  z-index: 20;
 }
 
 #scratcher-box {
@@ -287,6 +289,9 @@ cursor: grab;
   padding: 5px;
   
 }
+#resetgamebtn {
+  font-size: 4vh;
+}
 #resetbutton {
 border: none;
 padding: 10px 20px;
@@ -300,36 +305,13 @@ border-radius:1cap;
 text-align: center;
 text-decoration: none;
 display:block;
-font-size: 2vh;
+font-size: 4vh;
 margin: auto;
 }
 #resetbutton:hover {
   color: #000000;
   background:snow!important;
   border: 1px solid transparent;
-}
-#resetgamebtn {
-  border: none;
-  padding: 10px 20px;
-  color: #FFFFFF;
-  cursor: pointer;
-  transition: all 200ms ease-in-out;
-  border-radius: 1cap;
-  text-align: center;
-  text-decoration: none;
-  display: block;
-  font-size: 2vh;
-  margin: auto;
-}
-#resetgamebtn:hover:not(:disabled) {
-  color: #000000;
-  background: snow!important;
-  border: 1px solid transparent;
-}
-#resetgamebtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  color: #888888;
 }
 #baby{
   font-weight: 600;
@@ -377,7 +359,7 @@ button:hover {
 .modal {
   display: none; /* Hidden by default */
   position: fixed; /* Stay in place */
-  z-index: 1000; /* Sit on top */
+  z-index: 1; /* Sit on top */
   left: 0;
   top: 0;
   width: 100%; /* Full width */
